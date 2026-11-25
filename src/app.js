@@ -8,7 +8,15 @@ export function handleRequest(req, res) {
   // The target is resolved against a fixed base and only its pathname is read, so a
   // client-supplied host (in the Host header, or inside an absolute-form target such as
   // `GET http://evil.example/hello HTTP/1.1`) cannot choose which route matches.
-  const { pathname } = new URL(req.url, 'http://localhost');
+  let pathname = null;
+  try {
+    pathname = new URL(req.url, 'http://localhost').pathname;
+  } catch {
+    // A target the URL parser rejects has no pathname to match, so it keeps the null
+    // default and falls through to the same 404 as any other unmatched request. The
+    // failure is caught here because a throw escaping the request listener ends the
+    // process without sending a response, leaving the client unanswered.
+  }
   const isHello = (req.method === 'GET' || req.method === 'HEAD') && pathname === HELLO_PATH;
 
   // Setting statusCode and the content type directly lets Node compute a fixed
