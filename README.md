@@ -2,7 +2,7 @@
 
 ## What this project is
 
-A small Node.js HTTP server that exposes exactly one endpoint, `/hello`, and answers any HTTP client that calls it with the literal text `Hello world`. A `GET` or `HEAD` request on `/hello` returns status `200`, the media type `text/plain; charset=utf-8` and the body `Hello world`; every other path, and every other method on `/hello`, returns `404` with the body `Not Found`. The server is built on Node's own `node:http` module — there is no framework, no build step and no dependency to install.
+A small Node.js HTTP server that exposes exactly one endpoint, `/hello`, and answers any HTTP client that calls it with the literal text `Hello world`. A `GET` request on `/hello` returns status `200`, the media type `text/plain; charset=utf-8` and the body `Hello world`, while a `HEAD` request on it returns the same status and media type with no body and no `Content-Length`; every other path, and every other method on `/hello`, returns `404` with the body `Not Found`. The server is built on Node's own `node:http` module — there is no framework, no build step and no dependency to install.
 
 The code is three files: `src/server.js` reads the host and port and starts listening, `src/app.js` decides what each request is answered with, and `test/hello.test.js` checks that contract over a real socket.
 
@@ -48,7 +48,7 @@ npm test
 
 That runs `node --test` from the repository root. It needs no configuration: `test/hello.test.js` matches the runner's default `test/**/*.js` pattern. Each case talks to a server started on port `0`, so the operating system picks a free port and the suite can never collide with a running tutorial instance or with a second run of itself.
 
-The run ends with this summary, and exits with code `0`:
+The run ends with a summary of this kind, and exits with code `0`:
 
 ```console
 1..5
@@ -62,7 +62,7 @@ The run ends with this summary, and exits with code `0`:
 # duration_ms <varies>
 ```
 
-Above the summary, each of the five cases prints an `ok` line — the 200 greeting, the ignored query string, the bodiless `HEAD`, the trailing-slash 404 and the `POST` 404.
+The block above, with an `ok` line per case, is the form a piped or continuous-integration run prints on Node.js 22 — the 200 greeting, the ignored query string, the bodiless `HEAD`, the trailing-slash 404 and the `POST` 404. In an interactive terminal Node's spec reporter prints the same five cases as `✔` lines and the same counts as `ℹ tests 5`, `ℹ pass 5` and `ℹ fail 0`, with no plan line and no `ok` lines at all, and from Node.js 23 the spec reporter is the default for piped output too. Compare the counts the run reports rather than the punctuation around them, and check that the command exits with code `0`.
 
 If a case fails, the source no longer matches this tutorial. A wrong body or content type points at `handleRequest` in `src/app.js`. A wrong `content-length` points at how the response is ended there: the handler sets `res.statusCode` and `res.setHeader(...)` and calls `res.end(body)`, which lets Node compute a fixed `Content-Length`, where answering through `res.writeHead(...)` would send `Transfer-Encoding: chunked` and no length at all.
 
@@ -137,6 +137,8 @@ Check these, and ignore anything else the response carries:
 - the body is exactly `Hello world` — 11 bytes, no trailing newline, no quotes, a capital `H` and a lowercase `w` (not `Hello World`)
 - `Date`, `Connection` and `Keep-Alive` come from Node's HTTP layer and will differ between machines, so do not compare them
 
+The quoted blocks and the fixed `Content-Length: 11` and `Content-Length: 9` are what an HTTP/1.1 client receives, which is what `curl` and browsers send by default and what the commands in this tutorial use; an HTTP/1.0 client such as `curl --http1.0` gets the same status, content type and body, framed by the connection closing instead of a `Content-Length`.
+
 Confirm the length in the second terminal:
 
 ```bash
@@ -186,7 +188,7 @@ The same client commands against port 4500 return the same responses:
 curl -isS http://127.0.0.1:4500/hello
 ```
 
-`HOST` works the same way and defaults to `127.0.0.1`, so the tutorial answers requests from your own machine only unless you change it. Both variables are read from the environment by `src/server.js`: there is no source edit to make and no `.env` file involved.
+`HOST` works the same way: it defaults to `127.0.0.1` and `PORT` defaults to `3000`. Those are the two settings `src/server.js` reads from the environment, and the loopback default means the tutorial answers requests from your own machine only unless you change it: there is no source edit to make and no `.env` file involved.
 
 ## Extend the project
 
