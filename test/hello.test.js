@@ -14,6 +14,10 @@ before(async () => {
 });
 
 after(async () => {
+  if (!server) return;
+  // A name-pattern filter that matches no case lets the runner reach this hook before the
+  // before hook's asynchronous listen has completed, so wait for the server to start first.
+  if (!server.listening) await new Promise((resolve) => server.once('listening', resolve));
   await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 });
 
