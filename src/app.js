@@ -19,12 +19,17 @@ export function handleRequest(req, res) {
   }
   const isHello = (req.method === 'GET' || req.method === 'HEAD') && pathname === HELLO_PATH;
 
-  // Setting statusCode and the content type directly lets Node compute a fixed
-  // Content-Length from the body; answering through the head-writing form instead would
-  // send Transfer-Encoding: chunked and no Content-Length, which the contract forbids.
+  // Setting statusCode and the content type with setHeader, then declaring the
+  // length, keeps every answer fixed-length; answering with res.writeHead(...)
+  // instead would send Transfer-Encoding: chunked and no Content-Length, which
+  // the contract forbids. Node derives the length from the body on HTTP/1.1
+  // only, so it is declared here, and only for a response with a body, since a
+  // HEAD answer has none to delimit.
+  const body = isHello ? HELLO_BODY : NOT_FOUND_BODY;
   res.statusCode = isHello ? 200 : 404;
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.end(isHello ? HELLO_BODY : NOT_FOUND_BODY);
+  if (req.method !== 'HEAD') res.setHeader('Content-Length', Buffer.byteLength(body));
+  res.end(body);
 }
 
 export function createServer() {

@@ -64,7 +64,7 @@ The run ends with a summary of this kind, and exits with code `0`:
 
 The block above, with an `ok` line per case, is the form a piped or continuous-integration run prints on Node.js 22 — the 200 greeting, the ignored query string, the bodiless `HEAD`, the trailing-slash 404 and the `POST` 404. In an interactive terminal Node's spec reporter prints the same five cases as `✔` lines and the same counts as `ℹ tests 5`, `ℹ pass 5` and `ℹ fail 0`, with no plan line and no `ok` lines at all, and from Node.js 23 the spec reporter is the default for piped output too. Compare the counts the run reports rather than the punctuation around them, and check that the command exits with code `0`.
 
-If a case fails, the source no longer matches this tutorial. A wrong body or content type points at `handleRequest` in `src/app.js`. A wrong `content-length` points at how the response is ended there: the handler sets `res.statusCode` and `res.setHeader(...)` and calls `res.end(body)`, which lets Node compute a fixed `Content-Length`, where answering through `res.writeHead(...)` would send `Transfer-Encoding: chunked` and no length at all.
+If a case fails, the source no longer matches this tutorial. A wrong body or content type points at `handleRequest` in `src/app.js`. A wrong `content-length` points at how the response is ended there: the handler sets `res.statusCode` and `res.setHeader(...)`, declares the length itself with `Content-Length` and calls `res.end(body)`, where leaving the length to Node drops it from an HTTP/1.0 response and answering through `res.writeHead(...)` would send `Transfer-Encoding: chunked` and no length at all.
 
 ## Start the server
 
@@ -137,7 +137,7 @@ Check these, and ignore anything else the response carries:
 - the body is exactly `Hello world` — 11 bytes, no trailing newline, no quotes, a capital `H` and a lowercase `w` (not `Hello World`)
 - `Date`, `Connection` and `Keep-Alive` come from Node's HTTP layer and will differ between machines, so do not compare them
 
-The quoted blocks and the fixed `Content-Length: 11` and `Content-Length: 9` are what an HTTP/1.1 client receives, which is what `curl` and browsers send by default and what the commands in this tutorial use; an HTTP/1.0 client such as `curl --http1.0` gets the same status, content type and body, framed by the connection closing instead of a `Content-Length`.
+The quoted blocks and the fixed `Content-Length: 11` and `Content-Length: 9` are what an HTTP/1.1 client receives, which is what `curl` and browsers send by default and what the commands in this tutorial use; an HTTP/1.0 client such as `curl --http1.0` gets the same status, content type, `Content-Length` and body, because the handler declares the length itself instead of relying on Node's HTTP/1.1 default.
 
 Confirm the length in the second terminal:
 
@@ -196,7 +196,7 @@ The application code is about forty lines including comments — `handleRequest`
 
 To add a route, make two edits:
 
-1. Add a branch to `handleRequest` in `src/app.js` for your new pathname, keeping the same shape as the `/hello` branch: read the pathname from `req.url`, decide, then set `res.statusCode`, set `res.setHeader('Content-Type', ...)` and call `res.end(body)`.
+1. Add a branch to `handleRequest` in `src/app.js` for your new pathname, keeping the same shape as the `/hello` branch: read the pathname from `req.url`, decide, then set `res.statusCode`, set `res.setHeader('Content-Type', ...)`, set `res.setHeader('Content-Length', ...)` for a response that writes a body and call `res.end(body)`.
 2. Add a case to `test/hello.test.js` that calls the new path on the suite's server and asserts its status and body.
 
 Both fit inside files that already exist, so an extra route needs no new module, no router and no dependency.
@@ -213,7 +213,7 @@ For the same reason the project has no framework, no request-body parsing, no pe
 | --- | --- | --- |
 | `node --version` prints below `v22.` | Node.js 18 and 20 still run the code but are end of life and get no security fixes; older releases lack a global `fetch`, so `npm test` fails with `fetch is not defined`, and the oldest also lack `node:test`, failing with `Cannot find module 'node:test'` | Install the Node.js 22 LTS line and run `nvm use` |
 | `npm test` fails on the body or the content type | `handleRequest` in `src/app.js` no longer answers with `Hello world` and `text/plain; charset=utf-8` | Restore `HELLO_BODY` and the `Content-Type` header |
-| `npm test` fails on `content-length`, and the response carries `transfer-encoding: chunked` | The response is written with `res.writeHead(...)` instead of `res.statusCode` plus `res.setHeader` and `res.end(body)` | Use the second form, so Node computes a fixed `Content-Length` |
+| `npm test` fails on `content-length`, and the response carries `transfer-encoding: chunked` | The response is written with `res.writeHead(...)` instead of `res.statusCode` plus `res.setHeader` and `res.end(body)` | Use the second form, which declares a fixed `Content-Length` itself |
 | `Error: listen EADDRINUSE: address already in use 127.0.0.1:3000` on start | Port 3000 is already bound, by an earlier instance or by another program | Stop that process, or start with `PORT=4500 npm start` |
 | `curl: (7) Failed to connect ... Could not connect to server` | Nothing is listening on that host and port | Start the server, and check the host and port match the `Listening on ...` line |
 | A 404 for a path you believe is correct | The path is not exactly `/hello` (for example `/hello/` or `/hello/world`), or the method is not `GET` or `HEAD` | Remove the trailing slash; call it with `GET` or `HEAD` |
