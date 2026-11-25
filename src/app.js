@@ -32,6 +32,29 @@ export function handleRequest(req, res) {
   res.end(body);
 }
 
+// node:http dispatches a CONNECT request to the server's 'connect' event rather than the
+// request listener: its target names an authority instead of a path, and what the event
+// hands over is the raw socket of the tunnel, with no ServerResponse to answer with.
+// CONNECT is never GET or HEAD, so even a CONNECT aimed at /hello is answered with the
+// contract's 404, written as fixed-length bytes to the socket itself.
+function handleConnect(req, socket) {
+  // The 'connect' event hands over the raw socket once node:http has detached its own
+  // handling of it, so no 'error' listener remains on the connection. A client that
+  // resets while this answer is being written would then raise an unhandled 'error' and
+  // end the process; handling it here confines the failure to that one connection.
+  socket.on('error', () => socket.destroy());
+  const head = [
+    'HTTP/1.1 404 Not Found',
+    'Content-Type: text/plain; charset=utf-8',
+    `Content-Length: ${Buffer.byteLength(NOT_FOUND_BODY)}`,
+    'Connection: close',
+    '',
+  ].join('\r\n');
+  socket.end(`${head}\r\n${NOT_FOUND_BODY}`);
+}
+
 export function createServer() {
-  return http.createServer(handleRequest);
+  const server = http.createServer(handleRequest);
+  server.on('connect', handleConnect);
+  return server;
 }
