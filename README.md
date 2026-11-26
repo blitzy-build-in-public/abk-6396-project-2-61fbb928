@@ -22,7 +22,7 @@ v22.23.5
 
 The repository declares that requirement in three places, because each one reaches a different tool: `engines.node` in `package.json` is `>=22.0.0`, `.nvmrc` contains the single line `22` for version managers, and this section. If you use a version manager, run `nvm use` in the repository root to switch to the pinned line. `engines` is only advisory to npm unless `engine-strict` is set, which is why the release line is also pinned in `.nvmrc`.
 
-If `node --version` prints something below `v22.`, install the Node.js 22 LTS line and run `nvm use`. Node.js 18 and 20 still run this code — `node:test` and the global `fetch` the tests use both exist there — but both are end of life and receive no security fixes. Releases older than that cannot run it: they lack a global `fetch`, and the oldest also lack `node:test`, so `npm test` fails with `fetch is not defined` or `Cannot find module 'node:test'`.
+If `node --version` prints something below `v22.`, install the Node.js 22 LTS line and run `nvm use`. Node.js 18 and 20 still run this code — `node:test` and the global `fetch` the tests use both exist there — but both are end of life and receive no security fixes. Releases older than that cannot run the tests: a release that has the test runner but no global `fetch` fails with `fetch is not defined`, and one without the runner at all never reaches a test, because `npm test` stops with `node: bad option: --test` and exit code `9`, before any test file loads.
 
 ## Install
 
@@ -192,7 +192,7 @@ curl -isS http://127.0.0.1:4500/hello
 
 ## Extend the project
 
-The application code is 78 lines including comments and blank lines — 60 in `src/app.js` for `handleRequest` and `createServer`, plus 18 in the entry point `src/server.js` — with a 67-line test file in `test/hello.test.js`. You can read all of it in one sitting and still hold the HTTP module in your head while you do.
+The application code is 78 lines including comments and blank lines — 60 in `src/app.js` for `handleRequest`, `handleConnect` and `createServer`, plus 18 in the entry point `src/server.js` — with a 67-line test file in `test/hello.test.js`. You can read all of it in one sitting and still hold the HTTP module in your head while you do.
 
 To add a route, make two edits:
 
@@ -211,7 +211,7 @@ For the same reason the project has no framework, no request-body parsing, no pe
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `node --version` prints below `v22.` | Node.js 18 and 20 still run the code but are end of life and get no security fixes; older releases lack a global `fetch`, so `npm test` fails with `fetch is not defined`, and the oldest also lack `node:test`, failing with `Cannot find module 'node:test'` | Install the Node.js 22 LTS line and run `nvm use` |
+| `node --version` prints below `v22.` | Node.js 18 and 20 still run the code but are end of life and get no security fixes; older releases lack a global `fetch`, so `npm test` fails with `fetch is not defined`, and those without the test runner stop with `node: bad option: --test` and exit code `9` | Install the Node.js 22 LTS line and run `nvm use` |
 | `npm test` fails on the body or the content type | `handleRequest` in `src/app.js` no longer answers with `Hello world` and `text/plain; charset=utf-8` | Restore `HELLO_BODY` and the `Content-Type` header |
 | `npm test` fails on `Content-Length`, and the response carries `Transfer-Encoding: chunked` | The response is written with `res.writeHead(...)` instead of `res.statusCode` plus `res.setHeader` and `res.end(body)` | Use the second form, which declares a fixed `Content-Length` itself |
 | `Error: listen EADDRINUSE: address already in use 127.0.0.1:3000` on start | Port 3000 is already bound, by an earlier instance or by another program | Stop that process, or start with `PORT=4500 npm start` |
